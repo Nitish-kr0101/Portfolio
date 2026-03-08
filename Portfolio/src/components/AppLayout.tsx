@@ -3,6 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Footer } from "@/components/Footer";
 
 export function AppLayout() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -31,6 +32,7 @@ export function AppLayout() {
           <div className="flex-1 p-4 md:p-6 overflow-auto">
             <Outlet />
           </div>
+          <Footer />
         </main>
       </div>
     </SidebarProvider>

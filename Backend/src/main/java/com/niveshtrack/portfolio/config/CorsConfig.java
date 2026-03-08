@@ -24,7 +24,9 @@ public class CorsConfig {
                                 "http://localhost:8080",   // React frontend (current)
                                 "http://localhost:5173",   // Vite dev server
                                 "http://localhost:3000",   // Create React App
-                                "http://localhost:4200"    // Angular (just in case)
+                                "http://localhost:4200",   // Angular (just in case)
+                                "http://localhost",        // Docker frontend (nginx on port 80)
+                                "http://frontend"          // Docker internal service name
                         )
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                         .allowedHeaders("*")

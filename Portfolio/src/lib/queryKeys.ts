@@ -20,4 +20,5 @@ export const queryKeys = {
   stocks: ["stocks"] as const,
   stockSearch: (query: string) => ["stocks", "search", query] as const,
   stock: (symbol: string) => ["stocks", symbol] as const,
+  appInfo: ["appInfo"] as const,
 };

@@ -202,3 +202,18 @@ export interface CreateSipRequest {
   amount: number;
   frequency?: string;
 }
+
+// --- App Info (from AppInfo microservice) ---
+
+export interface AppInfo {
+  appName: string;
+  tagline: string;
+  version: string;
+  supportEmail: string;
+  supportPhone: string;
+  address: string;
+  socialLinks: Record<string, string>;
+  copyright: string;
+  termsUrl: string;
+  privacyUrl: string;
+}

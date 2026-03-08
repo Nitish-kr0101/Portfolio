@@ -7,8 +7,8 @@ spring:
     name: niveshtrack-portfolio
 
   datasource:
-    url: jdbc:mysql://localhost:3306/niveshtrack_db?useSSL=false&serverTimezone=Asia/Kolkata&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
-    username: root
+    url: ${DB_URL:jdbc:mysql://localhost:3306/niveshtrack_db?useSSL=false&serverTimezone=Asia/Kolkata&allowPublicKeyRetrieval=true&characterEncoding=UTF-8}
+    username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:Nitish12345}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
