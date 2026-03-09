@@ -159,7 +159,7 @@ class HoldingsServiceTest {
 
             assertThat(holdings).hasSize(1);
             assertThat(holdings.get(0).getAvgBuyPrice())
-                    .isEqualByComparingTo(new BigDecimal("3226.67"));
+                    .isEqualByComparingTo(new BigDecimal("3266.67"));
             assertThat(holdings.get(0).getQuantity()).isEqualByComparingTo(new BigDecimal("30"));
         }
 

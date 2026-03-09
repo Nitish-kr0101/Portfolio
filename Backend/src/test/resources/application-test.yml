@@ -1,7 +1,4 @@
 spring:
-  profiles:
-    active: test
-
   datasource:
     url: jdbc:h2:mem:niveshtrack_test;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
     driver-class-name: org.h2.Driver
