@@ -51,6 +51,7 @@ class HoldingsControllerIntegrationTest {
         // Seed stock price data so holdings can be enriched
         seedStocks();
         accessToken = registerAndGetToken("holdingsuser@example.com", "password123");
+        fundWallet(new BigDecimal("10000000"));
     }
 
     // ===== GET HOLDINGS =====
@@ -143,7 +144,7 @@ class HoldingsControllerIntegrationTest {
             mockMvc.perform(get(HOLDINGS_URL)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$[*].weightPercent", everyItem(greaterThan(0))));
+                    .andExpect(jsonPath("$[*].weightPercent", everyItem(greaterThan(0.0))));
         }
 
         @Test
@@ -180,6 +181,14 @@ class HoldingsControllerIntegrationTest {
                     .lastUpdated(LocalDateTime.now()).build()
         );
         stockRepository.saveAll(stocks);
+    }
+
+    private void fundWallet(BigDecimal amount) throws Exception {
+        mockMvc.perform(post("/api/wallet/deposit")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amount\": " + amount.toPlainString() + "}"))
+                .andExpect(status().isOk());
     }
 
     private String registerAndGetToken(String email, String password) throws Exception {

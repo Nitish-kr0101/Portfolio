@@ -1,6 +1,7 @@
 package com.niveshtrack.portfolio.controller;
 
 import com.niveshtrack.portfolio.dto.request.LoginRequest;
+import com.niveshtrack.portfolio.dto.request.RefreshTokenRequest;
 import com.niveshtrack.portfolio.dto.request.RegisterRequest;
 import com.niveshtrack.portfolio.dto.response.AuthResponse;
 import com.niveshtrack.portfolio.service.AuthService;
@@ -57,7 +58,7 @@ public class AuthController {
             @ApiResponse(responseCode = "200", description = "Token refreshed"),
             @ApiResponse(responseCode = "400", description = "Invalid or expired refresh token")
     })
-    public ResponseEntity<AuthResponse> refresh(@RequestParam String refreshToken) {
-        return ResponseEntity.ok(authService.refreshToken(refreshToken));
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return ResponseEntity.ok(authService.refreshToken(request.getRefreshToken()));
     }
 }

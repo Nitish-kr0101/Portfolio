@@ -23,7 +23,7 @@ class XIRRCalculatorTest {
         @Test
         @DisplayName("should compute ~12% XIRR for a standard monthly SIP with equal growth")
         void shouldComputeReasonableXIRRForMonthlySIP() {
-            // 12 monthly SIPs of ₹10,000 then receive ₹137,000 at end (~12% XIRR)
+            // 12 monthly SIPs of ₹10,000 then receive ₹128,000 at end (~12% XIRR)
             LocalDate start = LocalDate.of(2023, 1, 1);
             List<XIRRCalculator.CashFlow> cashFlows = Arrays.asList(
                 new XIRRCalculator.CashFlow(start,                    -10000.0),
@@ -38,7 +38,7 @@ class XIRRCalculatorTest {
                 new XIRRCalculator.CashFlow(start.plusMonths(9),      -10000.0),
                 new XIRRCalculator.CashFlow(start.plusMonths(10),     -10000.0),
                 new XIRRCalculator.CashFlow(start.plusMonths(11),     -10000.0),
-                new XIRRCalculator.CashFlow(start.plusMonths(12),    137000.0)  // maturity
+                new XIRRCalculator.CashFlow(start.plusMonths(12),    128000.0)  // maturity
             );
 
             BigDecimal xirr = XIRRCalculator.calculate(cashFlows);

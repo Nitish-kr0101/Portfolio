@@ -13,6 +13,7 @@ import com.niveshtrack.portfolio.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -103,11 +104,11 @@ public class AuthService {
     @Transactional
     public AuthResponse refreshToken(String refreshTokenStr) {
         RefreshToken refreshToken = refreshTokenRepository.findByToken(refreshTokenStr)
-                .orElseThrow(() -> new ValidationException("Invalid or expired refresh token"));
+                .orElseThrow(() -> new BadCredentialsException("Invalid or expired refresh token"));
 
         if (refreshToken.isExpired()) {
             refreshTokenRepository.delete(refreshToken);
-            throw new ValidationException("Refresh token has expired. Please log in again.");
+            throw new BadCredentialsException("Refresh token has expired. Please log in again.");
         }
 
         User user = refreshToken.getUser();

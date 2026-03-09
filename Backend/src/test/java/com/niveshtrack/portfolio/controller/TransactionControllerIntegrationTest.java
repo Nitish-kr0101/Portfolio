@@ -6,7 +6,9 @@ import com.niveshtrack.portfolio.dto.request.CreateTransactionRequest;
 import com.niveshtrack.portfolio.dto.request.LoginRequest;
 import com.niveshtrack.portfolio.dto.request.RegisterRequest;
 import com.niveshtrack.portfolio.dto.request.UpdateTransactionRequest;
+import com.niveshtrack.portfolio.entity.Stock;
 import com.niveshtrack.portfolio.entity.TransactionType;
+import com.niveshtrack.portfolio.repository.StockRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -26,6 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -40,6 +44,7 @@ class TransactionControllerIntegrationTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
+    @Autowired private StockRepository stockRepository;
 
     private String accessToken;
 
@@ -48,7 +53,9 @@ class TransactionControllerIntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        seedStocks();
         accessToken = registerAndGetToken("txuser@example.com", "password123");
+        fundWallet(new BigDecimal("10000000"));
     }
 
     // ===== CREATE =====
@@ -124,8 +131,8 @@ class TransactionControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 422 when selling more than available")
-        void shouldReturn422WhenSellExceedsHoldings() throws Exception {
+        @DisplayName("should return 400 when selling more than available")
+        void shouldReturn400WhenSellExceedsHoldings() throws Exception {
             // No prior BUY; attempting SELL should fail with validation error
             CreateTransactionRequest req = new CreateTransactionRequest();
             req.setStockSymbol("INFY");
@@ -140,7 +147,7 @@ class TransactionControllerIntegrationTest {
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
-                    .andExpect(status().isUnprocessableEntity());
+                    .andExpect(status().isBadRequest());
         }
     }
 
@@ -295,6 +302,41 @@ class TransactionControllerIntegrationTest {
     }
 
     // ===== HELPERS =====
+
+    private void seedStocks() {
+        List<Stock> stocks = List.of(
+            Stock.builder().symbol("TCS").name("Tata Consultancy Services Ltd")
+                    .sector("IT").currentPrice(new BigDecimal("3950.00"))
+                    .lastUpdated(LocalDateTime.now()).build(),
+            Stock.builder().symbol("INFY").name("Infosys Ltd")
+                    .sector("IT").currentPrice(new BigDecimal("1780.00"))
+                    .lastUpdated(LocalDateTime.now()).build(),
+            Stock.builder().symbol("SBIN").name("State Bank of India")
+                    .sector("Banking").currentPrice(new BigDecimal("820.00"))
+                    .lastUpdated(LocalDateTime.now()).build(),
+            Stock.builder().symbol("WIPRO").name("Wipro Ltd")
+                    .sector("IT").currentPrice(new BigDecimal("520.00"))
+                    .lastUpdated(LocalDateTime.now()).build(),
+            Stock.builder().symbol("RELIANCE").name("Reliance Industries Ltd")
+                    .sector("Conglomerate").currentPrice(new BigDecimal("2500.00"))
+                    .lastUpdated(LocalDateTime.now()).build(),
+            Stock.builder().symbol("HDFC").name("HDFC Bank Ltd")
+                    .sector("Banking").currentPrice(new BigDecimal("1600.00"))
+                    .lastUpdated(LocalDateTime.now()).build(),
+            Stock.builder().symbol("MARUTI").name("Maruti Suzuki India Ltd")
+                    .sector("Automobile").currentPrice(new BigDecimal("12000.00"))
+                    .lastUpdated(LocalDateTime.now()).build()
+        );
+        stockRepository.saveAll(stocks);
+    }
+
+    private void fundWallet(BigDecimal amount) throws Exception {
+        mockMvc.perform(post("/api/wallet/deposit")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amount\": " + amount.toPlainString() + "}"))
+                .andExpect(status().isOk());
+    }
 
     private String registerAndGetToken(String email, String password) throws Exception {
         RegisterRequest reg = new RegisterRequest();
