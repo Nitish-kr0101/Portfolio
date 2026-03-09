@@ -1,6 +1,6 @@
 import { getAccessToken } from "@/lib/api";
 
-const BASE_URL = "http://localhost:8081";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8081";
 
 const downloadFile = async (path: string, filename: string) => {
   const token = getAccessToken();
@@ -28,7 +28,7 @@ export const reportService = {
     downloadFile("/api/reports/portfolio-summary", "portfolio-summary.csv"),
 
   downloadTransactions: () =>
-    downloadFile("/api/reports/transactions", "monthly-pl.csv"),
+    downloadFile("/api/reports/transactions", "transactions.csv"),
 
   downloadTaxReport: (fy?: string) => {
     const path = fy

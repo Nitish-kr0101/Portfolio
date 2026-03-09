@@ -35,6 +35,7 @@ export interface Stock {
 
 export interface Transaction {
   id: number;
+  assetType?: string;
   stockSymbol: string;
   stockName: string;
   type: "BUY" | "SELL";
@@ -42,7 +43,9 @@ export interface Transaction {
   price: number;
   transactionDate: string; // "yyyy-MM-dd"
   brokerage: number;
+  totalAmount?: number;
   notes?: string;
+  createdAt?: string;
   orderType?: "MARKET" | "LIMIT";
 }
 
@@ -102,6 +105,14 @@ export interface PortfolioAllocation {
   color: string; // assigned client-side
 }
 
+/** Raw shape returned by the backend PortfolioAllocationDTO */
+export interface PortfolioAllocationRaw {
+  sector: string;
+  totalValue: number;
+  percentage: number;
+  stockCount?: number;
+}
+
 export interface PortfolioGrowth {
   date: string;
   totalValue: number;
@@ -115,9 +126,13 @@ export interface WatchlistItem {
   id: number;
   stockSymbol: string;
   stockName: string;
+  sector?: string;
   currentPrice?: number;
+  dayChange?: number;
+  dayChangePercent?: number;
   changePercent?: number;
   addedDate?: string;
+  createdAt?: string;
 }
 
 // --- Alerts ---
@@ -136,11 +151,36 @@ export interface PriceAlert {
 
 export interface MonthlyPL {
   month: string;
+  monthLabel?: string;
+  year?: number;
+  monthNumber?: number;
+  realisedPL: number;
+  unrealisedPL: number;
+  invested?: number;
+  proceeds?: number;
+  /** Computed client-side for charts */
   profit: number;
   loss: number;
 }
 
 export interface TaxSummary {
+  financialYear: string;
+  totalStcgGains: number;
+  totalStcgLosses: number;
+  netStcg: number;
+  stcgTaxRate?: number;
+  stcgTaxLiability: number;
+  totalLtcgGains: number;
+  totalLtcgLosses: number;
+  netLtcg: number;
+  ltcgExemption?: number;
+  taxableLtcg?: number;
+  ltcgTaxRate?: number;
+  ltcgTaxLiability: number;
+  totalTaxLiability: number;
+  totalRealised?: number;
+  lineItems?: unknown[];
+  /** Computed client-side aliases for backward compat */
   fy: string;
   shortTermGains: number;
   longTermGains: number;

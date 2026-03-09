@@ -78,8 +78,10 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
+        const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8081";
         const { data } = await axios.post(
-          `http://localhost:8081/api/auth/refresh?refreshToken=${encodeURIComponent(refreshToken)}`
+          `${baseURL}/api/auth/refresh`,
+          { refreshToken }
         );
         saveTokens(data.accessToken, data.refreshToken);
         // Update stored user fields that may have changed

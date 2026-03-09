@@ -18,8 +18,13 @@ export const portfolioService = {
   },
 
   getAllocation: async (): Promise<PortfolioAllocation[]> => {
-    const { data } = await api.get<Omit<PortfolioAllocation, "color">[]>("/api/portfolio/allocation");
-    return data.map((item, i) => ({ ...item, color: CHART_COLORS[i % CHART_COLORS.length] }));
+    const { data } = await api.get<{ sector: string; totalValue: number; percentage: number; stockCount?: number }[]>("/api/portfolio/allocation");
+    return data.map((item, i) => ({
+      name: item.sector,
+      value: Number(item.totalValue),
+      percent: Number(item.percentage),
+      color: CHART_COLORS[i % CHART_COLORS.length],
+    }));
   },
 
   getGrowth: async (): Promise<PortfolioGrowth[]> => {

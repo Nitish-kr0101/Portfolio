@@ -3,6 +3,7 @@ import { api, saveTokens, clearTokens } from "@/lib/api";
 import type { AuthResponse, UserProfile } from "@/types";
 
 const USER_KEY = "niveshtrack_user";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8081";
 
 const toUserProfile = (r: AuthResponse): UserProfile => ({
   userId: r.userId,
@@ -12,9 +13,18 @@ const toUserProfile = (r: AuthResponse): UserProfile => ({
   darkMode: r.darkMode,
 });
 
+/** Maps backend UserProfileDTO (has `id`) to frontend UserProfile (has `userId`) */
+const fromProfileDTO = (d: { id?: number; userId?: number; name: string; email: string; currency: string; darkMode: boolean }): UserProfile => ({
+  userId: d.userId ?? d.id ?? 0,
+  name: d.name,
+  email: d.email,
+  currency: d.currency,
+  darkMode: d.darkMode,
+});
+
 export const authService = {
   login: async (email: string, password: string): Promise<{ user: UserProfile }> => {
-    const { data } = await axios.post<AuthResponse>("http://localhost:8081/api/auth/login", {
+    const { data } = await axios.post<AuthResponse>(`${API_BASE}/api/auth/login`, {
       email,
       password,
     });
@@ -25,7 +35,7 @@ export const authService = {
   },
 
   register: async (name: string, email: string, password: string): Promise<{ user: UserProfile }> => {
-    const { data } = await axios.post<AuthResponse>("http://localhost:8081/api/auth/register", {
+    const { data } = await axios.post<AuthResponse>(`${API_BASE}/api/auth/register`, {
       name,
       email,
       password,
@@ -50,14 +60,14 @@ export const authService = {
   },
 
   updateProfile: async (profile: Partial<UserProfile>): Promise<UserProfile> => {
-    const { data } = await api.put<AuthResponse>("/api/user/profile", profile);
-    const updated = toUserProfile(data);
+    const { data } = await api.put("/api/user/profile", profile);
+    const updated = fromProfileDTO(data);
     localStorage.setItem(USER_KEY, JSON.stringify(updated));
     return updated;
   },
 
   getProfile: async (): Promise<UserProfile> => {
-    const { data } = await api.get<AuthResponse>("/api/user/profile");
-    return toUserProfile(data);
+    const { data } = await api.get("/api/user/profile");
+    return fromProfileDTO(data);
   },
 };
