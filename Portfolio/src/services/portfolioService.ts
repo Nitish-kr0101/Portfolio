@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import type { DashboardSummary, Holding, PortfolioAllocation, PortfolioGrowth } from "@/types";
+import type { DashboardSummary, Holding, InvestmentSplit, PortfolioAllocation, PortfolioGrowth } from "@/types";
 
 const CHART_COLORS = [
   "#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#3b82f6",
@@ -29,6 +29,11 @@ export const portfolioService = {
 
   getGrowth: async (): Promise<PortfolioGrowth[]> => {
     const { data } = await api.get<PortfolioGrowth[]>("/api/portfolio/growth");
+    return data;
+  },
+
+  getInvestmentSplit: async (): Promise<InvestmentSplit> => {
+    const { data } = await api.get<InvestmentSplit>("/api/portfolio/investment-split");
     return data;
   },
 };

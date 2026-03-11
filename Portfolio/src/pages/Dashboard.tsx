@@ -5,8 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { portfolioService } from "@/services/portfolioService";
 import { walletService } from "@/services/walletService";
 import { queryKeys } from "@/lib/queryKeys";
-import type { Holding } from "@/types";
-import { TrendingUp, TrendingDown, IndianRupee, Percent, ArrowUpRight, ArrowDownRight, Award, Wallet, BarChart3, Landmark } from "lucide-react";
+import type { Holding, InvestmentSplit } from "@/types";
+import { TrendingUp, TrendingDown, IndianRupee, Percent, ArrowUpRight, ArrowDownRight, Award, Wallet, BarChart3, Landmark, RefreshCw } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
 
 const formatCurrency = (val: number) => "₹" + val.toLocaleString("en-IN", { maximumFractionDigits: 0 });
@@ -19,6 +19,7 @@ const getHoldingLabel = (h: unknown): string => {
 };
 
 const ALLOCATION_COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#3b82f6", "#a855f7"];
+const SIP_LUMPSUM_COLORS = ["#8b5cf6", "#06b6d4"];
 
 const Dashboard = () => {
   const { data: summary, isLoading: loadingSummary } = useQuery({
@@ -46,6 +47,11 @@ const Dashboard = () => {
     queryFn: walletService.getBalance,
   });
 
+  const { data: investmentSplit } = useQuery<InvestmentSplit>({
+    queryKey: queryKeys.investmentSplit,
+    queryFn: portfolioService.getInvestmentSplit,
+  });
+
   const loading = loadingSummary || loadingAllocation || loadingGrowth;
 
   // Compute stock vs MF split
@@ -64,6 +70,14 @@ const Dashboard = () => {
     { name: "Mutual Funds", value: mfValue, color: ALLOCATION_COLORS[1] },
     { name: "Cash", value: cashBalance, color: ALLOCATION_COLORS[2] },
   ].filter((a) => a.value > 0);
+
+  // Build SIP vs Lumpsum data for pie chart
+  const sipLumpsumData = investmentSplit
+    ? [
+        { name: "SIP", value: Number(investmentSplit.sipAmount), color: SIP_LUMPSUM_COLORS[0] },
+        { name: "Lumpsum", value: Number(investmentSplit.lumpsumAmount), color: SIP_LUMPSUM_COLORS[1] },
+      ].filter((d) => d.value > 0)
+    : [];
 
   if (loading || !summary) {
     return (
@@ -84,70 +98,124 @@ const Dashboard = () => {
 
   const isProfit = summary.totalPL >= 0;
 
-  const summaryCards = [
-    { label: "Total Portfolio", value: formatCurrency(totalPortfolioValue), icon: IndianRupee, color: "text-primary", sub: "" },
-    { label: "Stocks Value", value: formatCurrency(stocksValue), icon: BarChart3, color: "text-indigo-500", sub: totalPortfolioValue > 0 ? `${((stocksValue / totalPortfolioValue) * 100).toFixed(1)}%` : "" },
-    { label: "Mutual Funds", value: formatCurrency(mfValue), icon: Landmark, color: "text-emerald-500", sub: totalPortfolioValue > 0 ? `${((mfValue / totalPortfolioValue) * 100).toFixed(1)}%` : "" },
-    { label: "Cash Balance", value: formatCurrency(cashBalance), icon: Wallet, color: "text-amber-500", sub: totalPortfolioValue > 0 ? `${((cashBalance / totalPortfolioValue) * 100).toFixed(1)}%` : "" },
-  ];
-
-  const plCards = [
-    { label: "Total Invested", value: formatCurrency(summary.totalInvested), icon: IndianRupee, color: "text-primary" },
-    { label: "Current Value", value: formatCurrency(summary.currentValue), icon: TrendingUp, color: "text-primary" },
-    {
-      label: "Profit / Loss",
-      value: (isProfit ? "+" : "") + formatCurrency(summary.totalPL),
-      icon: isProfit ? ArrowUpRight : ArrowDownRight,
-      color: isProfit ? "text-profit" : "text-loss",
-    },
-    { label: "Return %", value: summary.returnPercent.toFixed(2) + "%", icon: Percent, color: isProfit ? "text-profit" : "text-loss" },
-  ];
-
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold font-display">Dashboard</h1>
-        <Badge variant="outline" className="text-xs gap-1">
-          <Award className="h-3 w-3" /> XIRR: {summary.xirr}%
-        </Badge>
+        <div className="flex items-center gap-2">
+          {(summary.activeSipCount ?? 0) > 0 && (
+            <Badge variant="secondary" className="text-xs gap-1">
+              <RefreshCw className="h-3 w-3" />
+              {summary.activeSipCount} SIPs · {formatCurrency(summary.monthlySipTotal ?? 0)}/mo
+            </Badge>
+          )}
+          <Badge variant="outline" className="text-xs gap-1">
+            <Award className="h-3 w-3" /> XIRR: {summary.xirr}%
+          </Badge>
+        </div>
       </div>
 
-      {/* Portfolio Composition Cards */}
+      {/* Row 1: Portfolio Composition */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {summaryCards.map((c) => (
-          <Card key={c.label}>
-            <CardContent className="flex items-center gap-4 p-5">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-lg bg-secondary ${c.color}`}>
-                <c.icon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{c.label}</p>
-                <p className={`text-lg font-bold ${c.color}`}>{c.value}</p>
-                {c.sub && <p className="text-[10px] text-muted-foreground">{c.sub} of portfolio</p>}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-primary">
+              <IndianRupee className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Total Portfolio</p>
+              <p className="text-lg font-bold text-primary">{formatCurrency(totalPortfolioValue)}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-indigo-500">
+              <BarChart3 className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Stocks Value</p>
+              <p className="text-lg font-bold text-indigo-500">{formatCurrency(stocksValue)}</p>
+              {totalPortfolioValue > 0 && <p className="text-[10px] text-muted-foreground">{((stocksValue / totalPortfolioValue) * 100).toFixed(1)}% of portfolio</p>}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-emerald-500">
+              <Landmark className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Mutual Funds</p>
+              <p className="text-lg font-bold text-emerald-500">{formatCurrency(mfValue)}</p>
+              {totalPortfolioValue > 0 && <p className="text-[10px] text-muted-foreground">{((mfValue / totalPortfolioValue) * 100).toFixed(1)}% of portfolio</p>}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-amber-500">
+              <Wallet className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Cash Balance</p>
+              <p className="text-lg font-bold text-amber-500">{formatCurrency(cashBalance)}</p>
+              {totalPortfolioValue > 0 && <p className="text-[10px] text-muted-foreground">{((cashBalance / totalPortfolioValue) * 100).toFixed(1)}% of portfolio</p>}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* P&L Cards */}
+      {/* Row 2: Investment Performance */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {plCards.map((c) => (
-          <Card key={c.label}>
-            <CardContent className="flex items-center gap-4 p-5">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-lg bg-secondary ${c.color}`}>
-                <c.icon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{c.label}</p>
-                <p className={`text-lg font-bold ${c.color}`}>{c.value}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-primary">
+              <IndianRupee className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Total Invested</p>
+              <p className="text-lg font-bold text-primary">{formatCurrency(summary.totalInvested)}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className={`flex h-10 w-10 items-center justify-center rounded-lg bg-secondary ${isProfit ? "text-profit" : "text-loss"}`}>
+              <TrendingUp className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Current Value</p>
+              <p className={`text-lg font-bold ${isProfit ? "text-profit" : "text-loss"}`}>{formatCurrency(summary.currentValue)}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className={`flex h-10 w-10 items-center justify-center rounded-lg bg-secondary ${isProfit ? "text-profit" : "text-loss"}`}>
+              {isProfit ? <ArrowUpRight className="h-5 w-5" /> : <ArrowDownRight className="h-5 w-5" />}
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Profit / Loss</p>
+              <p className={`text-lg font-bold ${isProfit ? "text-profit" : "text-loss"}`}>{(isProfit ? "+" : "") + formatCurrency(summary.totalPL)}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className={`flex h-10 w-10 items-center justify-center rounded-lg bg-secondary ${isProfit ? "text-profit" : "text-loss"}`}>
+              <Percent className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Return %</p>
+              <p className={`text-lg font-bold ${isProfit ? "text-profit" : "text-loss"}`}>{summary.returnPercent.toFixed(2)}%</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Top Movers */}
+      {/* Row 3: Top Movers */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
@@ -178,7 +246,7 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Charts */}
+      {/* Row 4: Asset Allocation + SIP vs Lumpsum */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Asset Allocation Pie */}
         <Card>
@@ -190,18 +258,9 @@ const Dashboard = () => {
               <p className="text-center text-muted-foreground py-12">No assets yet</p>
             ) : (
               <>
-                <ResponsiveContainer width="100%" height={250}>
+                <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
-                    <Pie
-                      data={assetAllocation}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={90}
-                      innerRadius={50}
-                      paddingAngle={3}
-                    >
+                    <Pie data={assetAllocation} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={85} innerRadius={50} paddingAngle={3}>
                       {assetAllocation.map((entry, i) => (
                         <Cell key={i} fill={entry.color} />
                       ))}
@@ -215,9 +274,7 @@ const Dashboard = () => {
                       <div className="h-2 w-2 rounded-full" style={{ backgroundColor: a.color }} />
                       {a.name}: {formatCurrency(a.value)}
                       {totalPortfolioValue > 0 && (
-                        <span className="text-muted-foreground">
-                          ({((a.value / totalPortfolioValue) * 100).toFixed(1)}%)
-                        </span>
+                        <span className="text-muted-foreground">({((a.value / totalPortfolioValue) * 100).toFixed(1)}%)</span>
                       )}
                     </div>
                   ))}
@@ -227,6 +284,48 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
+        {/* SIP vs Lumpsum Pie */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">SIP vs Lumpsum (Mutual Funds)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {sipLumpsumData.length === 0 ? (
+              <p className="text-center text-muted-foreground py-12">No mutual fund investments yet</p>
+            ) : (
+              <>
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie data={sipLumpsumData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={85} innerRadius={50} paddingAngle={3}>
+                      {sipLumpsumData.map((entry, i) => (
+                        <Cell key={i} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="flex flex-wrap gap-3 mt-2 justify-center">
+                  {sipLumpsumData.map((d) => {
+                    const total = sipLumpsumData.reduce((s, x) => s + x.value, 0);
+                    return (
+                      <div key={d.name} className="flex items-center gap-1 text-xs">
+                        <div className="h-2 w-2 rounded-full" style={{ backgroundColor: d.color }} />
+                        {d.name}: {formatCurrency(d.value)}
+                        {total > 0 && (
+                          <span className="text-muted-foreground">({((d.value / total) * 100).toFixed(1)}%)</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Row 5: Portfolio Growth + Sector Allocation */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Portfolio Growth Line */}
         <Card>
           <CardHeader>
@@ -247,8 +346,8 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Sector Allocation Pie (existing) */}
-        {allocation.length > 0 && (
+        {/* Sector Allocation Pie */}
+        {allocation.length > 0 ? (
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-medium">Sector Allocation</CardTitle>
@@ -256,22 +355,31 @@ const Dashboard = () => {
             <CardContent>
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
-                  <Pie data={allocation} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={50} paddingAngle={3}>
+                  <Pie data={allocation} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={85} innerRadius={50} paddingAngle={3}>
                     {allocation.map((entry, i) => (
                       <Cell key={i} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                  <Tooltip formatter={(v: number) => v.toFixed(1) + "%"} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="flex flex-wrap gap-3 mt-2 justify-center">
                 {allocation.map((a) => (
                   <div key={a.name} className="flex items-center gap-1 text-xs">
                     <div className="h-2 w-2 rounded-full" style={{ backgroundColor: a.color }} />
-                    {a.name}
+                    {a.name} ({Number(a.value).toFixed(1)}%)
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">Sector Allocation</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-center text-muted-foreground py-12">No holdings to show sector data</p>
             </CardContent>
           </Card>
         )}

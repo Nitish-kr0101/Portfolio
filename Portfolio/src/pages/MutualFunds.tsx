@@ -67,6 +67,7 @@ const MutualFunds = () => {
     qc.invalidateQueries({ queryKey: queryKeys.walletBalance });
     qc.invalidateQueries({ queryKey: queryKeys.walletLedger });
     qc.invalidateQueries({ queryKey: queryKeys.dashboard });
+    qc.invalidateQueries({ queryKey: queryKeys.investmentSplit });
   };
 
   const buyMutation = useMutation({

@@ -94,6 +94,8 @@ export interface DashboardSummary {
   topGainer: Holding | string | null;
   topLoser: Holding | string | null;
   largestHolding: Holding | string | null;
+  activeSipCount?: number;
+  monthlySipTotal?: number;
 }
 
 // --- Portfolio ---
@@ -241,6 +243,15 @@ export interface CreateSipRequest {
   symbol: string;
   amount: number;
   frequency?: string;
+}
+
+// --- Investment Split ---
+
+export interface InvestmentSplit {
+  sipAmount: number;
+  lumpsumAmount: number;
+  sipPercent: number;
+  lumpsumPercent: number;
 }
 
 // --- App Info (from AppInfo microservice) ---
