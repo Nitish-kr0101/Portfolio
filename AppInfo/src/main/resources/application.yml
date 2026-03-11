@@ -8,6 +8,11 @@ spring:
 
 server:
   port: 8082
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
 
 # ================================================================
 # Application Contact Information
@@ -24,7 +29,7 @@ app:
       twitter: "https://twitter.com/niveshtrack"
       linkedin: "https://linkedin.com/company/niveshtrack"
       github: "https://github.com/niveshtrack"
-    copyright: "\u00A9 2026 NiveshTrack. All rights reserved."
+    copyright: "© 2026 NiveshTrack. All rights reserved."
     terms-url: "https://niveshtrack.com/terms"
     privacy-url: "https://niveshtrack.com/privacy"
 
