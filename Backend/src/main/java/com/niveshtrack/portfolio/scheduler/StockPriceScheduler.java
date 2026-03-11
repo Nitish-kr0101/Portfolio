@@ -35,7 +35,7 @@ public class StockPriceScheduler {
      *   <li>Outside market hours: runs simulation (±0.3% drift) to keep demo alive</li>
      * </ul>
      */
-    @Scheduled(fixedRate = 600_000) // 10 minutes
+    @Scheduled(fixedRate = 60_000) // 1 minute
     public void updateStockPrices() {
         LocalTime now = LocalTime.now();
 

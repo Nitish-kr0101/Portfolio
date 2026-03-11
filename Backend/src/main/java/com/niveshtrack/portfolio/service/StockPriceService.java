@@ -166,7 +166,7 @@ public class StockPriceService {
         return stockRepository.findById(symbol)
                 .filter(s -> s.getCurrentPrice() != null)
                 .map(stock -> {
-                    double change = ThreadLocalRandom.current().nextDouble(-0.003, 0.003);
+                    double change = ThreadLocalRandom.current().nextDouble(-0.0075, 0.0075);
                     BigDecimal newPrice = stock.getCurrentPrice()
                             .multiply(BigDecimal.ONE.add(BigDecimal.valueOf(change)))
                             .setScale(4, RoundingMode.HALF_UP);

@@ -45,4 +45,10 @@ public class DashboardSummaryDTO {
 
     /** The holding with the highest current market value */
     private HoldingDTO largestHolding;
+
+    /** Number of active SIP instructions */
+    private Integer activeSipCount;
+
+    /** Total monthly SIP commitment amount */
+    private java.math.BigDecimal monthlySipTotal;
 }

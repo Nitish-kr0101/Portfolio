@@ -1,6 +1,7 @@
 package com.niveshtrack.portfolio.controller;
 
 import com.niveshtrack.portfolio.dto.response.DashboardSummaryDTO;
+import com.niveshtrack.portfolio.dto.response.InvestmentSplitDTO;
 import com.niveshtrack.portfolio.dto.response.PortfolioAllocationDTO;
 import com.niveshtrack.portfolio.dto.response.PortfolioGrowthDTO;
 import com.niveshtrack.portfolio.security.UserDetailsServiceImpl;
@@ -51,5 +52,12 @@ public class PortfolioController extends BaseController {
                description = "Returns monthly portfolio value data points for time-series chart.")
     public ResponseEntity<List<PortfolioGrowthDTO>> getGrowth() {
         return ResponseEntity.ok(portfolioService.getPortfolioGrowth(getCurrentUserId()));
+    }
+
+    @GetMapping("/investment-split")
+    @Operation(summary = "Get SIP vs Lumpsum investment split",
+               description = "Returns breakdown of mutual fund investment by mode: SIP vs one-time purchase.")
+    public ResponseEntity<InvestmentSplitDTO> getInvestmentSplit() {
+        return ResponseEntity.ok(portfolioService.getInvestmentSplit(getCurrentUserId()));
     }
 }

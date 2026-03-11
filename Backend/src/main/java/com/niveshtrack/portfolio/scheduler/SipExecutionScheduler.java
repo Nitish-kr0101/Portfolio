@@ -3,6 +3,7 @@ package com.niveshtrack.portfolio.scheduler;
 import com.niveshtrack.portfolio.entity.SipInstruction;
 import com.niveshtrack.portfolio.repository.SipInstructionRepository;
 import com.niveshtrack.portfolio.service.MutualFundService;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -12,7 +13,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Executes due SIP installments every day at 9:30 AM IST.
+ * Executes due SIP installments every 30 seconds (demo mode).
  *
  * <p>Finds all active SIP instructions whose {@code nextExecutionDate ≤ today}
  * and invokes the MutualFundService to execute each one.
@@ -26,9 +27,27 @@ public class SipExecutionScheduler {
     private final MutualFundService mutualFundService;
 
     /**
-     * Daily SIP execution at 9:30 AM IST.
+     * On startup, reset all active SIPs' nextExecutionDate to today so they execute immediately (demo mode).
      */
-    @Scheduled(cron = "0 30 9 * * *", zone = "Asia/Kolkata")
+    @PostConstruct
+    public void resetSipDatesToToday() {
+        List<SipInstruction> allActive = sipInstructionRepository.findAll().stream()
+                .filter(s -> Boolean.TRUE.equals(s.getActive()))
+                .filter(s -> s.getNextExecutionDate() != null && s.getNextExecutionDate().isAfter(LocalDate.now()))
+                .toList();
+        for (SipInstruction sip : allActive) {
+            sip.setNextExecutionDate(LocalDate.now());
+            sipInstructionRepository.save(sip);
+        }
+        if (!allActive.isEmpty()) {
+            log.info("Reset {} active SIPs' nextExecutionDate to today for demo mode", allActive.size());
+        }
+    }
+
+    /**
+     * SIP execution every 30 seconds (demo/testing).
+     */
+    @Scheduled(fixedRate = 30_000)
     public void executeDueSips() {
         LocalDate today = LocalDate.now();
         List<SipInstruction> dueSips =
@@ -46,13 +65,17 @@ public class SipExecutionScheduler {
 
         for (SipInstruction sip : dueSips) {
             try {
-                mutualFundService.executeSIP(sip);
-                success++;
-                log.debug("SIP #{} executed: {} ₹{}", sip.getId(), sip.getSymbol(), sip.getAmount());
+                boolean executed = mutualFundService.executeSIP(sip);
+                if (executed) {
+                    success++;
+                    log.debug("SIP #{} executed: {} ₹{}", sip.getId(), sip.getSymbol(), sip.getAmount());
+                } else {
+                    failed++;
+                    log.debug("SIP #{} skipped: {} ₹{}", sip.getId(), sip.getSymbol(), sip.getAmount());
+                }
             } catch (Exception e) {
                 failed++;
                 log.error("SIP #{} failed for {} : {}", sip.getId(), sip.getSymbol(), e.getMessage());
-                // Don't advance nextExecutionDate so it retries next day
             }
         }
 

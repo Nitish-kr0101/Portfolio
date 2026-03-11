@@ -27,9 +27,9 @@ public class MutualFundNavScheduler {
     private final MutualFundRepository mutualFundRepository;
 
     /**
-     * Daily NAV update at 8:00 PM IST.
+     * NAV simulation every 60 seconds for live demo experience.
      */
-    @Scheduled(cron = "0 0 20 * * *", zone = "Asia/Kolkata")
+    @Scheduled(fixedRate = 60_000)
     public void updateNavs() {
         List<MutualFund> funds = mutualFundRepository.findAll();
         if (funds.isEmpty()) {
@@ -45,8 +45,8 @@ public class MutualFundNavScheduler {
                 continue;
             }
 
-            // Random drift between -0.5% and +0.5%
-            double driftPct = ThreadLocalRandom.current().nextDouble(-0.005, 0.005);
+            // Random drift between -0.75% and +0.75%
+            double driftPct = ThreadLocalRandom.current().nextDouble(-0.0075, 0.0075);
             BigDecimal multiplier = BigDecimal.ONE.add(BigDecimal.valueOf(driftPct));
             BigDecimal newNav = oldNav.multiply(multiplier).setScale(4, RoundingMode.HALF_UP);
 

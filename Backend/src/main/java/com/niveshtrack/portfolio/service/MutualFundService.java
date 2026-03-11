@@ -43,6 +43,7 @@ public class MutualFundService {
     private final UserRepository userRepository;
     private final WalletService walletService;
     private final HoldingService holdingService;
+    private final HoldingsService holdingsService;
     private final AssetPriceHistoryRepository priceHistoryRepository;
     private final SipInstructionRepository sipInstructionRepository;
 
@@ -123,6 +124,9 @@ public class MutualFundService {
         // Update holding
         holdingService.updateHoldingAfterBuy(userId, AssetType.MF, fund.getSymbol(), units, nav);
 
+        // Evict holdings cache so dashboard reflects the change immediately
+        holdingsService.evictHoldingsCache(userId);
+
         log.info("MF buy: userId={}, fund={}, amount={}, units={}, nav={}",
                 userId, fund.getSymbol(), amount, units, nav);
 
@@ -178,6 +182,9 @@ public class MutualFundService {
         // Update holding
         holdingService.updateHoldingAfterSell(userId, AssetType.MF, fund.getSymbol(), units);
 
+        // Evict holdings cache so dashboard reflects the change immediately
+        holdingsService.evictHoldingsCache(userId);
+
         log.info("MF sell: userId={}, fund={}, units={}, nav={}, proceeds={}",
                 userId, fund.getSymbol(), units, nav, proceeds);
 
@@ -202,8 +209,8 @@ public class MutualFundService {
                 ? request.getFrequency().toUpperCase()
                 : "MONTHLY";
 
-        // Next execution = 1st of next month
-        LocalDate nextExecution = LocalDate.now().plusMonths(1).withDayOfMonth(1);
+        // Next execution = today (immediate for demo)
+        LocalDate nextExecution = LocalDate.now();
 
         SipInstruction sip = SipInstruction.builder()
                 .user(user)
@@ -273,6 +280,9 @@ public class MutualFundService {
             if (balance.compareTo(amount) < 0) {
                 log.warn("SIP execution skipped — insufficient balance: userId={}, fund={}, needed={}, available={}",
                         sip.getUser().getId(), sip.getSymbol(), amount, balance);
+                // Advance date so it doesn't retry endlessly every 30s
+                sip.setNextExecutionDate(computeNextExecutionDate(sip));
+                sipInstructionRepository.save(sip);
                 return false;
             }
 
@@ -298,6 +308,9 @@ public class MutualFundService {
             // Update holding
             holdingService.updateHoldingAfterBuy(
                     sip.getUser().getId(), AssetType.MF, fund.getSymbol(), units, nav);
+
+            // Evict holdings cache
+            holdingsService.evictHoldingsCache(sip.getUser().getId());
 
             // Advance next execution date
             sip.setNextExecutionDate(computeNextExecutionDate(sip));

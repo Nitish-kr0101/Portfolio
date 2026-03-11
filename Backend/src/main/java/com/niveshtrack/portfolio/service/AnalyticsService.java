@@ -33,51 +33,120 @@ public class AnalyticsService {
 
     /**
      * Calculates monthly realised P&L for the last 12 months.
+     *
+     * <p>Realised P&L is computed only from SELL transactions, using weighted-average
+     * cost basis from prior BUY transactions (FIFO). Months with only BUY transactions
+     * have zero realised P&L (no profit or loss is realised until a sale).
      */
     @Transactional(readOnly = true)
     public List<MonthlyPLDTO> getMonthlyPL(Long userId) {
         LocalDate endDate = LocalDate.now();
         LocalDate startDate = endDate.minusMonths(11).withDayOfMonth(1);
 
-        List<Transaction> transactions = transactionRepository
-                .findByUserIdAndTransactionDateBetweenOrderByTransactionDateAsc(
-                        userId, startDate, endDate);
+        // All transactions up to now (need full BUY history for cost basis)
+        List<Transaction> allTxns = transactionRepository
+                .findByUserIdOrderByTransactionDateDesc(userId)
+                .stream()
+                .filter(t -> !t.getTransactionDate().isAfter(endDate))
+                .sorted(Comparator.comparing(Transaction::getTransactionDate))
+                .collect(Collectors.toList());
 
-        // Group by YYYY-MM key
-        Map<String, List<Transaction>> byMonth = transactions.stream()
-                .collect(Collectors.groupingBy(
-                        t -> DateUtils.toMonthKey(t.getTransactionDate())));
+        // Build per-symbol BUY queues for FIFO matching
+        Map<String, Deque<Transaction>> buyQueues = new LinkedHashMap<>();
+        // Track SELL transactions within the reporting window
+        Map<String, List<Transaction>> windowSells = new LinkedHashMap<>();
 
-        List<MonthlyPLDTO> result = new ArrayList<>();
+        for (Transaction t : allTxns) {
+            String sym = t.getStockSymbol();
+            if (t.getType() == TransactionType.BUY) {
+                buyQueues.computeIfAbsent(sym, k -> new ArrayDeque<>()).add(t);
+            } else if (!t.getTransactionDate().isBefore(startDate)) {
+                windowSells.computeIfAbsent(sym, k -> new ArrayList<>()).add(t);
+            }
+        }
+
+        // Compute realised P&L per month from SELL transactions matched against BUY cost
+        Map<String, BigDecimal> monthPL = new LinkedHashMap<>();
+        Map<String, BigDecimal> monthInvested = new LinkedHashMap<>();
+        Map<String, BigDecimal> monthProceeds = new LinkedHashMap<>();
+
+        // Initialise all months
         LocalDate cursor = startDate;
-
         while (!cursor.isAfter(endDate)) {
             String key = DateUtils.toMonthKey(cursor);
-            List<Transaction> monthTxns = byMonth.getOrDefault(key, List.of());
+            monthPL.put(key, BigDecimal.ZERO);
+            monthInvested.put(key, BigDecimal.ZERO);
+            monthProceeds.put(key, BigDecimal.ZERO);
+            cursor = cursor.plusMonths(1);
+        }
 
-            BigDecimal invested = monthTxns.stream()
-                    .filter(t -> t.getType() == TransactionType.BUY)
-                    .map(t -> t.getPrice().multiply(t.getQuantity()))
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Accumulate invested amounts (for informational display only)
+        List<Transaction> windowTxns = allTxns.stream()
+                .filter(t -> !t.getTransactionDate().isBefore(startDate))
+                .collect(Collectors.toList());
+        for (Transaction t : windowTxns) {
+            String key = DateUtils.toMonthKey(t.getTransactionDate());
+            if (t.getType() == TransactionType.BUY) {
+                BigDecimal amt = t.getPrice().multiply(t.getQuantity());
+                monthInvested.merge(key, amt, BigDecimal::add);
+            }
+        }
 
-            BigDecimal proceeds = monthTxns.stream()
-                    .filter(t -> t.getType() == TransactionType.SELL)
-                    .map(t -> t.getPrice().multiply(t.getQuantity()))
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // FIFO match SELLs against BUYs to compute realised P&L
+        for (Map.Entry<String, List<Transaction>> entry : windowSells.entrySet()) {
+            String sym = entry.getKey();
+            Deque<Transaction> buyQueue = buyQueues.getOrDefault(sym, new ArrayDeque<>());
 
-            BigDecimal realisedPL = proceeds.subtract(invested);
+            for (Transaction sell : entry.getValue()) {
+                String key = DateUtils.toMonthKey(sell.getTransactionDate());
+                BigDecimal sellProceeds = sell.getPrice().multiply(sell.getQuantity());
+                monthProceeds.merge(key, sellProceeds, BigDecimal::add);
 
+                BigDecimal remainingQty = sell.getQuantity();
+                while (remainingQty.compareTo(BigDecimal.ZERO) > 0 && !buyQueue.isEmpty()) {
+                    Transaction buy = buyQueue.peek();
+                    BigDecimal matchQty = remainingQty.min(buy.getQuantity());
+
+                    BigDecimal gain = sell.getPrice().subtract(buy.getPrice()).multiply(matchQty);
+                    monthPL.merge(key, gain, BigDecimal::add);
+
+                    remainingQty = remainingQty.subtract(matchQty);
+                    if (matchQty.compareTo(buy.getQuantity()) >= 0) {
+                        buyQueue.poll();
+                    } else {
+                        Transaction reduced = Transaction.builder()
+                                .id(buy.getId())
+                                .user(buy.getUser())
+                                .stockSymbol(buy.getStockSymbol())
+                                .stockName(buy.getStockName())
+                                .type(buy.getType())
+                                .quantity(buy.getQuantity().subtract(matchQty))
+                                .price(buy.getPrice())
+                                .transactionDate(buy.getTransactionDate())
+                                .brokerage(buy.getBrokerage())
+                                .build();
+                        buyQueue.poll();
+                        buyQueue.addFirst(reduced);
+                    }
+                }
+            }
+        }
+
+        // Build result list
+        List<MonthlyPLDTO> result = new ArrayList<>();
+        cursor = startDate;
+        while (!cursor.isAfter(endDate)) {
+            String key = DateUtils.toMonthKey(cursor);
             result.add(MonthlyPLDTO.builder()
                     .month(key)
                     .monthLabel(DateUtils.toMonthLabel(cursor))
                     .year(cursor.getYear())
                     .monthNumber(cursor.getMonthValue())
-                    .realisedPL(realisedPL.setScale(2, RoundingMode.HALF_UP))
-                    .unrealisedPL(BigDecimal.ZERO) // snapshot-based; simplified here
-                    .invested(invested.setScale(2, RoundingMode.HALF_UP))
-                    .proceeds(proceeds.setScale(2, RoundingMode.HALF_UP))
+                    .realisedPL(monthPL.getOrDefault(key, BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP))
+                    .unrealisedPL(BigDecimal.ZERO)
+                    .invested(monthInvested.getOrDefault(key, BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP))
+                    .proceeds(monthProceeds.getOrDefault(key, BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP))
                     .build());
-
             cursor = cursor.plusMonths(1);
         }
 

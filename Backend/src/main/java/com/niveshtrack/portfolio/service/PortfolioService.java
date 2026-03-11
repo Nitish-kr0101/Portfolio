@@ -1,9 +1,11 @@
 package com.niveshtrack.portfolio.service;
 
 import com.niveshtrack.portfolio.dto.response.*;
+import com.niveshtrack.portfolio.entity.AssetType;
 import com.niveshtrack.portfolio.entity.PortfolioSnapshot;
 import com.niveshtrack.portfolio.entity.Transaction;
 import com.niveshtrack.portfolio.entity.TransactionType;
+import com.niveshtrack.portfolio.repository.SipInstructionRepository;
 import com.niveshtrack.portfolio.repository.SnapshotRepository;
 import com.niveshtrack.portfolio.repository.TransactionRepository;
 import com.niveshtrack.portfolio.util.DateUtils;
@@ -33,6 +35,7 @@ public class PortfolioService {
     private final HoldingsService holdingsService;
     private final SnapshotRepository snapshotRepository;
     private final TransactionRepository transactionRepository;
+    private final SipInstructionRepository sipInstructionRepository;
 
     // ===== Dashboard Summary =====
 
@@ -75,6 +78,14 @@ public class PortfolioService {
 
         long totalTransactions = transactionRepository.countByUserId(userId);
 
+        // SIP summary
+        var allSips = sipInstructionRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        int activeSipCount = (int) allSips.stream().filter(s -> Boolean.TRUE.equals(s.getActive())).count();
+        BigDecimal monthlySipTotal = allSips.stream()
+                .filter(s -> Boolean.TRUE.equals(s.getActive()))
+                .map(s -> s.getAmount())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         return DashboardSummaryDTO.builder()
                 .totalInvested(totalInvested.setScale(2, RoundingMode.HALF_UP))
                 .currentValue(currentValue.setScale(2, RoundingMode.HALF_UP))
@@ -86,6 +97,8 @@ public class PortfolioService {
                 .topGainer(topGainer)
                 .topLoser(topLoser)
                 .largestHolding(largestHolding)
+                .activeSipCount(activeSipCount)
+                .monthlySipTotal(monthlySipTotal.setScale(2, RoundingMode.HALF_UP))
                 .build();
     }
 
@@ -160,6 +173,48 @@ public class PortfolioService {
 
         // Fallback: compute approximate monthly values from transaction history
         return computeGrowthFromTransactions(userId, startDate, endDate);
+    }
+
+    // ===== Investment Split (SIP vs Lumpsum) =====
+
+    /**
+     * Calculates the breakdown of mutual fund investments by mode: SIP vs Lumpsum.
+     * SIP transactions are identified by notes containing "SIP".
+     */
+    @Transactional(readOnly = true)
+    public InvestmentSplitDTO getInvestmentSplit(Long userId) {
+        List<Transaction> mfBuys = transactionRepository.findByUserIdOrderByTransactionDateDesc(userId)
+                .stream()
+                .filter(t -> t.getAssetType() == AssetType.MF && t.getType() == TransactionType.BUY)
+                .collect(Collectors.toList());
+
+        BigDecimal sipAmount = BigDecimal.ZERO;
+        BigDecimal lumpsumAmount = BigDecimal.ZERO;
+
+        for (Transaction t : mfBuys) {
+            BigDecimal amount = t.getPrice().multiply(t.getQuantity());
+            String notes = t.getNotes() != null ? t.getNotes().toLowerCase() : "";
+            if (notes.contains("sip")) {
+                sipAmount = sipAmount.add(amount);
+            } else {
+                lumpsumAmount = lumpsumAmount.add(amount);
+            }
+        }
+
+        BigDecimal total = sipAmount.add(lumpsumAmount);
+        BigDecimal sipPercent = total.compareTo(BigDecimal.ZERO) > 0
+                ? sipAmount.divide(total, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)).setScale(2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+        BigDecimal lumpsumPercent = total.compareTo(BigDecimal.ZERO) > 0
+                ? lumpsumAmount.divide(total, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)).setScale(2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        return InvestmentSplitDTO.builder()
+                .sipAmount(sipAmount.setScale(2, RoundingMode.HALF_UP))
+                .lumpsumAmount(lumpsumAmount.setScale(2, RoundingMode.HALF_UP))
+                .sipPercent(sipPercent)
+                .lumpsumPercent(lumpsumPercent)
+                .build();
     }
 
     // ===== Private Helpers =====
