@@ -5,6 +5,7 @@ import com.niveshtrack.portfolio.dto.response.HoldingDTO;
 import com.niveshtrack.portfolio.dto.response.PortfolioAllocationDTO;
 import com.niveshtrack.portfolio.entity.PortfolioSnapshot;
 import com.niveshtrack.portfolio.entity.User;
+import com.niveshtrack.portfolio.repository.SipInstructionRepository;
 import com.niveshtrack.portfolio.repository.SnapshotRepository;
 import com.niveshtrack.portfolio.repository.TransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,6 +34,9 @@ class PortfolioServiceTest {
 
     @Mock
     private TransactionRepository transactionRepository;
+
+    @Mock
+    private SipInstructionRepository sipInstructionRepository;
 
     @Mock
     private SnapshotRepository snapshotRepository;
