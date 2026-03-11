@@ -17,6 +17,7 @@ export const queryKeys = {
   mutualFunds: ["mutual-funds"] as const,
   mutualFundHoldings: ["mutual-funds", "holdings"] as const,
   sips: ["sip"] as const,
+  investmentSplit: ["investmentSplit"] as const,
   stocks: ["stocks"] as const,
   stockSearch: (query: string) => ["stocks", "search", query] as const,
   stock: (symbol: string) => ["stocks", symbol] as const,

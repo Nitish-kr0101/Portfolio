@@ -63,6 +63,10 @@ const SipManagement = () => {
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: queryKeys.sips });
+    qc.invalidateQueries({ queryKey: queryKeys.dashboard });
+    qc.invalidateQueries({ queryKey: queryKeys.holdings });
+    qc.invalidateQueries({ queryKey: queryKeys.walletBalance });
+    qc.invalidateQueries({ queryKey: queryKeys.investmentSplit });
   };
 
   const createMutation = useMutation({
