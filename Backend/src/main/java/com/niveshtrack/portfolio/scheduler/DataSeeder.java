@@ -6,7 +6,7 @@ import com.niveshtrack.portfolio.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -17,13 +17,12 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Seeds the database with sample NSE stocks, mutual funds, and a demo user
- * on application startup. Only active in the {@code dev} Spring profile.
+ * Seeds stock and mutual-fund master data on application startup.
+ * Demo-user data is only seeded in the {@code dev} Spring profile.
  *
  * <p>To prevent double-seeding, checks are performed before inserting.
  */
 @Component
-@Profile("dev")
 @RequiredArgsConstructor
 @Slf4j
 public class DataSeeder implements CommandLineRunner {
@@ -35,12 +34,18 @@ public class DataSeeder implements CommandLineRunner {
     private final AccountLedgerRepository accountLedgerRepository;
     private final PasswordEncoder passwordEncoder;
     private final WalletService walletService;
+    private final Environment environment;
 
     @Override
     public void run(String... args) {
         seedStocks();
         seedMutualFunds();
-        seedDemoUser();
+
+        if (Arrays.asList(environment.getActiveProfiles()).contains("dev")) {
+            seedDemoUser();
+        } else {
+            log.info("Skipping demo user seeding outside dev profile.");
+        }
     }
 
     // ===== Stocks =====
