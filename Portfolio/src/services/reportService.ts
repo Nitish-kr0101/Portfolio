@@ -1,10 +1,9 @@
 import { getAccessToken } from "@/lib/api";
-
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8081";
+import { apiBaseUrl } from "@/lib/runtimeConfig";
 
 const downloadFile = async (path: string, filename: string) => {
   const token = getAccessToken();
-  const response = await fetch(`${BASE_URL}${path}`, {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
 

@@ -1,4 +1,5 @@
 import axios, { type AxiosRequestConfig } from "axios";
+import { apiBaseUrl } from "./runtimeConfig";
 
 const ACCESS_TOKEN_KEY = "niveshtrack_access_token";
 const REFRESH_TOKEN_KEY = "niveshtrack_refresh_token";
@@ -18,7 +19,7 @@ export const clearTokens = () => {
 };
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8081",
+  baseURL: apiBaseUrl,
   headers: { "Content-Type": "application/json" },
 });
 
@@ -78,9 +79,8 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8081";
         const { data } = await axios.post(
-          `${baseURL}/api/auth/refresh`,
+          `${apiBaseUrl}/api/auth/refresh`,
           { refreshToken }
         );
         saveTokens(data.accessToken, data.refreshToken);

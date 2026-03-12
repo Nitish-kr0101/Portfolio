@@ -1,8 +1,9 @@
 import axios from "axios";
+import { appInfoBaseUrl } from "@/lib/runtimeConfig";
 import type { AppInfo } from "@/types";
 
 const appInfoApi = axios.create({
-  baseURL: import.meta.env.VITE_APPINFO_BASE_URL || "http://localhost:8082",
+  baseURL: appInfoBaseUrl,
   headers: { "Content-Type": "application/json" },
 });
 

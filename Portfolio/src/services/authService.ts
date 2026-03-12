@@ -1,9 +1,9 @@
 import axios from "axios";
 import { api, saveTokens, clearTokens } from "@/lib/api";
+import { apiBaseUrl } from "@/lib/runtimeConfig";
 import type { AuthResponse, UserProfile } from "@/types";
 
 const USER_KEY = "niveshtrack_user";
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8081";
 
 const toUserProfile = (r: AuthResponse): UserProfile => ({
   userId: r.userId,
@@ -24,7 +24,7 @@ const fromProfileDTO = (d: { id?: number; userId?: number; name: string; email: 
 
 export const authService = {
   login: async (email: string, password: string): Promise<{ user: UserProfile }> => {
-    const { data } = await axios.post<AuthResponse>(`${API_BASE}/api/auth/login`, {
+    const { data } = await axios.post<AuthResponse>(`${apiBaseUrl}/api/auth/login`, {
       email,
       password,
     });
@@ -35,7 +35,7 @@ export const authService = {
   },
 
   register: async (name: string, email: string, password: string): Promise<{ user: UserProfile }> => {
-    const { data } = await axios.post<AuthResponse>(`${API_BASE}/api/auth/register`, {
+    const { data } = await axios.post<AuthResponse>(`${apiBaseUrl}/api/auth/register`, {
       name,
       email,
       password,
